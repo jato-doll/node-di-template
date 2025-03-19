@@ -1,8 +1,7 @@
 {
   "name": "temp-log-api",
   "version": "1.0.0",
-  "main": "build/app.js",
-  "license": "ISC",
+  "main": "src/app.ts",
   "scripts": {
     "test:coverage": "jest --coverage",
     "build": "tsc -p tsconfig.build.json",
@@ -48,5 +47,20 @@
     ],
     "exec": "ts-node ./src/app.ts",
     "ext": ".ts"
-  }
+  },
+  "description": "a simple and powerful node typescript with dependency injection template",
+  "license": "MIT",
+  "keywords": [
+    "node.js",
+    "express",
+    "typescript",
+    "object-oriented",
+    "dependency-injection",
+    "boilerplate",
+    "jest",
+    "testing",
+    "modular",
+    "scalable",
+    "mit-license"
+  ]
 }
