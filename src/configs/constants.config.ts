@@ -1,28 +1,76 @@
 import * as dotenv from "dotenv";
+import { join } from "path";
+import { DataSource } from "typeorm";
 
 dotenv.config();
 
 /**
- * API Default Path
+ * ********************************
+ *         App Environment
+ * ********************************
+ */
+
+export const AppEnv = {
+    PORT: Number(process.env.PORT) || 3000,
+    Database: {
+        HOST: process.env.MYSQL_HOST,
+        PORT: Number(process.env.MYSQL_PORT),
+        USERNAME: process.env.MYSQL_USERNAME,
+        PASSWORD: process.env.MYSQL_PASSWORD,
+        DATABASE: process.env.MYSQL_DATABASE,
+    },
+};
+
+/**
+ * ********************************
+ *          App Constants
+ * ********************************
  */
 
 export const DEFAULT_PATH = "/API/V1";
 
+export const AppDataSource = new DataSource({
+    type: "mysql",
+    host: AppEnv.Database.HOST,
+    port: AppEnv.Database.PORT,
+    username: AppEnv.Database.USERNAME,
+    password: AppEnv.Database.PASSWORD,
+    database: AppEnv.Database.DATABASE,
+    entities: [
+        join(__dirname, "../entities/*.entity.ts"),
+        join(__dirname, "../entities/*.entity.js"),
+    ],
+    /**
+     * !!! NOTE !!!
+     *  Require build app before run migration command. The typeorm migration
+     *  can't see orm.config.ts file. Thus JUST build the app first!
+     */
+    migrations: [join(__dirname, "../migrations/*.js")],
+    migrationsRun: false,
+    logging: false,
+    synchronize: false,
+});
+
 /**
- * Application Environments
+ * ********************************
+ *          App Symbol
+ * ********************************
  */
 
-export const AppEnv = {
-    NODE_ENV: process.env.NODE_ENV,
-    PORT: Number(process.env.PORT) || 3000,
+export const Inject = {
+    DATASOURCE: Symbol.for("datasource"),
 };
 
-/**
- * Application Symbols
- */
-
 export const Decorate = {
-    CONTROLLER_ROUTE_PATH: Symbol.for("CONTROLLER_ROUTE_PATH"),
     HTTP_ROUTE_PATH: Symbol.for("HTTP_ROUTE_PATH"),
+    Controller: {
+        PATH: Symbol.for("CONTROLLER_PATH"),
+        REPOSITORIES: Symbol.for("CONTROLLER_REPOSITORIES"),
+        ENTITIES: Symbol.for("CONTROLLER_ENTITIES"),
+    },
+    Service: {
+        REPOSITORIES: Symbol.for("SERVICE_REPOSITORIES"),
+        ENTITIES: Symbol.for("SERVICE_ENTITIES"),
+    },
     CLASS_TRANSFORMER: Symbol.for("CLASS_TRANSFORMER"),
 };

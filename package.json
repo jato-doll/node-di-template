@@ -1,10 +1,12 @@
 {
   "name": "temp-log-api",
   "version": "1.0.0",
-  "main": "src/app.ts",
+  "main": "build/app.js",
   "scripts": {
+    "migration:create": "typeorm migration:create",
     "test:coverage": "jest --coverage",
     "build": "tsc -p tsconfig.build.json",
+    "start": "node ./build/app.js",
     "dev": "nodemon"
   },
   "dependencies": {
@@ -14,8 +16,10 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
+    "mysql2": "^3.13.0",
     "reflect-metadata": "^0.2.2",
-    "tsyringe": "^4.8.0"
+    "tsyringe": "^4.8.0",
+    "typeorm": "^0.3.21"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

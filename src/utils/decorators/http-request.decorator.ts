@@ -1,16 +1,13 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { plainToInstance } from "class-transformer";
 import { validateOrReject } from "class-validator";
-
 import { Decorate } from "../../configs/constants.config";
 import {
     BAD_REQUEST,
     CREATED,
-    INTERNAL_SERVER,
-    NO_CONTENT,
     OK,
     StatusMessage,
-} from "../../configs/http-code.config";
+} from "../http-code.config";
 
 type HTTPVerb = "get" | "post" | "patch" | "delete";
 
@@ -21,7 +18,7 @@ export type ControllerRoute = {
 };
 
 // Decorator function for HTTP request
-export function HTTPRequest(verb: HTTPVerb, routePath: string, code?: number) {
+export function HTTPRequest(verb: HTTPVerb, path: string, code?: number) {
     return function (
         target: any,
         propertyKey: string,
@@ -30,7 +27,7 @@ export function HTTPRequest(verb: HTTPVerb, routePath: string, code?: number) {
         // Set route path
         const route: ControllerRoute = {
             method: verb,
-            path: routePath,
+            path: path,
             name: propertyKey,
         };
 
@@ -41,17 +38,18 @@ export function HTTPRequest(verb: HTTPVerb, routePath: string, code?: number) {
             propertyKey,
         );
 
-        // original method
+        // Original method, descriptor.value
         const method = descriptor.value;
 
+        // Apply transformations for request data transfer to object
         descriptor.value = async function (
-            { headers, ...data }: any, // "data" can be both req or dto when apply @ValidateRequest(ClassDTO)
+            data: any, // "data" can be both req or dto when apply @ValidateRequest(ClassDTO)
             res: Response,
         ) {
-            // When using return as data
-            if (code && code < 10000) {
+            // When using return data
+            if (code) {
                 // get Class Transformer from metadata
-                const classTransformer = Reflect.getMetadata(
+                const classTransformRes = Reflect.getMetadata(
                     Decorate.CLASS_TRANSFORMER,
                     target,
                     propertyKey,
@@ -59,26 +57,30 @@ export function HTTPRequest(verb: HTTPVerb, routePath: string, code?: number) {
 
                 try {
                     let result = await method.apply(this, [data, res]);
-                    // Transform plain object to class instance
-                    if (classTransformer) {
+
+                    // Transform http response from CLASS_TRANSFORM_RESPONSE
+                    if (classTransformRes) {
                         result = plainToInstance(
-                            classTransformer,
+                            classTransformRes,
                             result || {},
-                            { excludeExtraneousValues: true },
+                            {
+                                excludeExtraneousValues: true,
+                            },
                         );
                     }
 
                     // Auto response data when return from controller's method
                     res.status(code).send({ code, data: result });
                 } catch (error: any) {
+                    const statusCode = error?.statusCode || 500;
                     const message =
                         error?.message || StatusMessage.INTERNAL_SERVER;
 
                     // Set error message to log
                     Reflect.set(res, "error", message);
 
-                    res.status(INTERNAL_SERVER).send({
-                        code: INTERNAL_SERVER,
+                    res.status(statusCode).send({
+                        code: statusCode,
                         message,
                     });
                 }
@@ -93,10 +95,54 @@ export function HTTPRequest(verb: HTTPVerb, routePath: string, code?: number) {
 }
 
 /**
+ * Decorator function for GET requests
+ * @param path HTTP route path
+ * @param code -
+ * - HTTP status code when success default `200`
+ * - set `code` to `$` for custom response
+ */
+export function Get(path?: string, code: number | "$" = OK) {
+    return HTTPRequest("get", path || "", code === "$" ? undefined : code);
+}
+
+/**
+ * Decorator function for POST requests
+ * @param path HTTP route path
+ * @param code -
+ * - HTTP status code when success default `201`
+ * - set `code` to `$` for custom response
+ */
+export function Post(path: string, code: number | "$" = CREATED) {
+    return HTTPRequest("post", path, code === "$" ? undefined : code);
+}
+
+/**
+ * Decorator function for PATCH requests
+ * @param path HTTP route path
+ * @param code  -
+ * - HTTP status code when success default `200`
+ * - set `code` to `$` for custom response
+ */
+export function Patch(path: string, code: number | "$" = OK) {
+    return HTTPRequest("patch", path, code === "$" ? undefined : code);
+}
+
+/**
+ * Decorator function for DELETE requests
+ * @param path HTTP route path
+ * @param code  -
+ * - HTTP status code when success default `200`
+ * - set `code` to `$` for custom response
+ */
+export function Delete(path: string, code: number | "$" = OK) {
+    return HTTPRequest("delete", path, code === "$" ? undefined : code);
+}
+
+/**
  * A Decorator for Validate Request data
- * @param classDTO class validate DTO, `@Expose()` is required for each property in classDTO
- * @note be careful not to let request params, query, and body
- * variables have the same name otherwise, they'll be overridden each other
+ * @param classDTO class validate DTO
+ * @BE_CAREFUL dot not to let request params, query, and body
+ * have the same variables name otherwise, they'll be overridden each other
  */
 export function ValidateRequest(classDTO: any) {
     return function (
@@ -123,15 +169,11 @@ export function ValidateRequest(classDTO: any) {
                 // Validate the class instance
                 await validateOrReject(dto);
 
-                // Add headers for further use
-                dto.headers = req.headers;
-
                 // Replace request with dto
                 originalMethod.apply(this, [dto, res]);
             } catch (errors: any) {
                 let message: string = StatusMessage.BAD_REQUEST;
 
-                // handle error from class-validator
                 if (errors?.length) {
                     const constraint = Object.values(
                         errors[0]?.constraints,
@@ -157,63 +199,16 @@ export function ValidateRequest(classDTO: any) {
 
 /**
  * A Decorator for Transform Response data
- * @param classTransformer to transfrom response data, `@Expose()` is required for each property in classTransformer
- *
- * @note if there are `PublishData` decorator. you can pass the classTransformer
- * as a second parameter of it then you can omit this `TransformResponse` decorator
+ * @param classTransformResponse to transfrom response data
  */
-export function TransformResponse(classTransformer: any) {
+export function TransformResponse(classTransformResponse: any) {
     return function (target: any, propertyKey: string) {
-        // set metadata ClassTransformer for transformed response data
+        // set metadata CLASS_TRANSFORM_RESPONSE to transformed response data
         Reflect.defineMetadata(
             Decorate.CLASS_TRANSFORMER,
-            classTransformer,
+            classTransformResponse,
             target,
             propertyKey,
         );
     };
-}
-
-/**
- * Decorator function for GET requests
- * @param path HTTP route path
- * @param code -
- * - HTTP status code when success default `200`
- * - set `code` to `$` for custom response
- */
-export function Get(path?: string, code: number | "$" = OK) {
-    return HTTPRequest("get", path || "", code === "$" ? undefined : code);
-}
-
-/**
- * Decorator function for POST requests
- * @param path HTTP route path
- * @param code -
- * - HTTP status code when success default `201`
- * - set `code` to `$` for custom response
- */
-export function Post(path?: string, code: number | "$" = CREATED) {
-    return HTTPRequest("post", path || "", code === "$" ? undefined : code);
-}
-
-/**
- * Decorator function for PATCH requests
- * @param path HTTP route path
- * @param code  -
- * - HTTP status code when success default `200`
- * - set `code` to `$` for custom response
- */
-export function Patch(path?: string, code: number | "$" = OK) {
-    return HTTPRequest("patch", path || "", code === "$" ? undefined : code);
-}
-
-/**
- * Decorator function for DELETE requests
- * @param path HTTP route path
- * @param code  -
- * - HTTP status code when success default `204`
- * - set `code` to `$` for custom response
- */
-export function Delete(path?: string, code: number | "$" = NO_CONTENT) {
-    return HTTPRequest("delete", path || "", code === "$" ? undefined : code);
 }

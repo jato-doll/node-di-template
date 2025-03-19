@@ -2,14 +2,20 @@ import { ClassConstructor } from "class-transformer";
 import cors from "cors";
 import express, { Application } from "express";
 import helmet from "helmet";
-import { container, singleton } from "tsyringe";
+import { container, inject, singleton } from "tsyringe";
+import { DataSource } from "typeorm";
 
-import { AppEnv, Decorate, DEFAULT_PATH } from "./configs/constants.config";
+import {
+    AppEnv,
+    Decorate,
+    DEFAULT_PATH,
+    Inject,
+} from "./configs/constants.config";
 import { ControllerRoute } from "./utils/decorators/http-request.decorator";
 import { Logger } from "./utils/logger.util";
-import ErrorHandler from "./utils/middlewares/error.middleware";
-import RequestLogger from "./utils/middlewares/req.middleware";
-import ResponseLogger from "./utils/middlewares/res.middleware";
+import ErrorHandler from "./configs/middlewares/error.middleware";
+import RequestLogger from "./configs/middlewares/req.middleware";
+import ResponseLogger from "./configs/middlewares/res.middleware";
 
 @singleton()
 export class AppServer {
@@ -17,7 +23,7 @@ export class AppServer {
 
     private controllers: ClassConstructor<any>[] = [];
 
-    constructor() {
+    constructor(@inject(Inject.DATASOURCE) private dataSource: DataSource) {
         this.app = express();
     }
 
@@ -36,6 +42,11 @@ export class AppServer {
         try {
             // define controllers
             this.controllers = controllers;
+            
+            // initialize database connection
+            await this.dataSource.initialize();
+            // run database migrations
+            await this.dataSource.runMigrations();
 
             return this.pluginMiddlewares();
         } catch (error) {
@@ -47,6 +58,7 @@ export class AppServer {
     private pluginMiddlewares(): Promise<void> {
         this.app.use(cors());
         this.app.use(helmet());
+        this.app.use(express.json());
         this.app.use(RequestLogger);
         this.app.use(ResponseLogger);
 
@@ -55,14 +67,55 @@ export class AppServer {
 
     private registerControllers(): Promise<void> {
         // Register all controllers
-        this.controllers.forEach((controller: any) => {
+        this.controllers?.forEach((controller: any) => {
             // Register container
             container.registerSingleton(controller);
 
             const controllerPaht = Reflect.getMetadata(
-                Decorate.CONTROLLER_ROUTE_PATH,
+                Decorate.Controller.PATH,
                 controller,
             );
+
+            const repositories: any[] = Reflect.getMetadata(
+                Decorate.Controller.REPOSITORIES,
+                controller,
+            );
+
+            const entities: any[] = Reflect.getMetadata(
+                Decorate.Controller.ENTITIES,
+                controller,
+            );
+
+            // register all entity repositories
+            if (repositories?.length) {
+                repositories.forEach(({ repo, entity }) => {
+                    // register Repository if not registered
+                    if (!container.isRegistered(repo.name)) {
+                        const repoMethods = this.extractRepositoryMethods(
+                            repo,
+                            entity,
+                        );
+
+                        container.register(repo.name, {
+                            useValue: this.dataSource
+                                .getRepository(entity)
+                                .extend(repoMethods),
+                        });
+                    }
+                });
+            }
+
+            // register all entities
+            if (entities?.length) {
+                entities.forEach((entity) => {
+                    // register Entity if not registered
+                    if (!container.isRegistered(entity.name)) {
+                        container.register(entity.name, {
+                            useValue: this.dataSource.getRepository(entity),
+                        });
+                    }
+                });
+            }
 
             // Register routes
             const instance: any = container.resolve(controller);
@@ -77,17 +130,15 @@ export class AppServer {
 
                 if (route) {
                     // custom controller path
-                    let path = controllerPaht
-                        ? `/${controllerPaht}/${route.path}`
+                    const path = controllerPaht
+                        ? `/${controllerPaht}/${route.path}`.replace(
+                              /(\/\/)/g,
+                              "/",
+                          )
                         : `/${route.path}`;
 
-                    // add DEFAULT_PATH of the API service if set
-                    if (DEFAULT_PATH) {
-                        path = DEFAULT_PATH + path;
-                    }
-
                     Logger.Success(
-                        `Registering route: [${route.method.toUpperCase()}] ${path}`,
+                        `Register HTTP [${route.method.toUpperCase()}]${path}`,
                     );
 
                     // add router and method each path
@@ -125,9 +176,31 @@ export class AppServer {
         this.app.listen(AppEnv.PORT, () => {
             const runningMessage =
                 process.env.NODE_ENV === "localhost"
-                    ? `Server is running on http://localhost:${AppEnv.PORT + DEFAULT_PATH}/`
+                    ? `Server is running on http://localhost:${
+                          AppEnv.PORT + DEFAULT_PATH
+                      }/`
                     : `Server is running on ${process.env.NODE_ENV} stage`;
             Logger.Log(runningMessage);
         });
+    }
+
+    /**
+     * A helper function to extract repository methods
+     * @param repo entity repository
+     * @param entity class entity
+     * @returns object of repository medhods
+     */
+    private extractRepositoryMethods(repo: any, entity: any): any {
+        const methods = Object.getOwnPropertyNames(repo.prototype).filter(
+            (methodName) => methodName !== "constructor",
+        );
+
+        return methods.reduce((obj, methodName) => {
+            obj[methodName] = repo.prototype[methodName].bind(
+                // bind entity repository help each method can use this keyword properly
+                this.dataSource.getRepository(entity),
+            );
+            return obj;
+        }, {} as any);
     }
 }
