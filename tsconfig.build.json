@@ -1,0 +1,16 @@
+{
+    "extends": "./tsconfig.json", // Inherit from the base tsconfig.json
+    "compilerOptions": {
+        "outDir": "./build", // Output directory for compiled files
+        "rootDir": "./src", // Root directory of input files
+        "removeComments": true // Remove comments in the output
+    },
+    "exclude": [
+        "node_modules",
+        "src/utils/unit-test.util.ts",
+        "**/__mocks__/*", // Exclude mock files
+        "**/__tests__/*", // Exclude test files
+        "**/*.spec.ts", // Exclude spec files
+        "**/*.test.ts" // Exclude test files
+    ]
+}
