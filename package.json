@@ -4,7 +4,7 @@
   "main": "build/app.js",
   "license": "ISC",
   "scripts": {
-    "test:ci": "jest --coverage",
+    "test:coverage": "jest --coverage",
     "build": "tsc -p tsconfig.build.json",
     "dev": "nodemon"
   },

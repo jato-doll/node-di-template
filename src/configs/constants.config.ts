@@ -6,7 +6,7 @@ dotenv.config();
  * API Default Path
  */
 
-export const DEFAULT_PATH = "/Log-Service";
+export const DEFAULT_PATH = "/API/V1";
 
 /**
  * Application Environments

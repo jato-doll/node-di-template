@@ -6,7 +6,7 @@ import { container, singleton } from "tsyringe";
 
 import { AppEnv, Decorate, DEFAULT_PATH } from "./configs/constants.config";
 import { ControllerRoute } from "./utils/decorators/http-request.decorator";
-import { Logger } from "./configs/logger.config";
+import { Logger } from "./utils/logger.util";
 import ErrorHandler from "./utils/middlewares/error.middleware";
 import RequestLogger from "./utils/middlewares/req.middleware";
 import ResponseLogger from "./utils/middlewares/res.middleware";

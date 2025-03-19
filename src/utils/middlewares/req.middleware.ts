@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 
-import { Logger } from "../../configs/logger.config";
+import { Logger } from "../logger.util";
 
 const RequestLogger = (
     req: Request,
