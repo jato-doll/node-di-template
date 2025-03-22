@@ -12,6 +12,7 @@ dotenv.config();
 
 export const AppEnv = {
     PORT: Number(process.env.PORT) || 3000,
+    JWT_SECRET: process.env.JWT_SECRET as string,
     Database: {
         HOST: process.env.MYSQL_HOST,
         PORT: Number(process.env.MYSQL_PORT),
@@ -73,4 +74,5 @@ export const Decorate = {
         ENTITIES: Symbol.for("SERVICE_ENTITIES"),
     },
     CLASS_TRANSFORMER: Symbol.for("CLASS_TRANSFORMER"),
+    JWT_AUTHENTICATION: Symbol.for("JWT_AUTHENTICATION"),
 };

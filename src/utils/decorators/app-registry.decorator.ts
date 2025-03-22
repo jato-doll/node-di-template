@@ -23,7 +23,7 @@ export function Controller(path?: string): ClassDecorator {
         metadataKeys.forEach((key: string) => {
             if (key === CLASS_CONSTRUCTURE_KEY) {
                 const services = Reflect.getMetadata(key, target);
-
+                
                 if (services?.length > 0) {
                     const controllerRepositories: any = [];
                     const controllerEntities: any = [];
@@ -73,26 +73,25 @@ export function Controller(path?: string): ClassDecorator {
 
 /**
  * determine a Service decorator
- * @param type type of service specify `Event` when declare service for event listeners
  */
-export function Service(type?: "Event"): any {
+export function Service(/** type?: string */): any {
     return function (target: any): any {
         // Make the class injectable
         injectable()(target);
 
-        if (type === "Event") {
-            const listeners = (target.prototype as any)._eventListeners || [];
+        // if (type === "Event") {
+        //     const listeners = (target.prototype as any)._eventListeners || [];
 
-            /**
-             * This implementation required the following config
-             * @see {@link ./src/configs/event.config.ts}
-             */
-            target.prototype.InitEventListener = function () {
-                for (const { eventName, handler } of listeners) {
-                    this.on(eventName, this[handler].bind(this));
-                }
-            };
-        }
+        //     /**
+        //      * This implementation required the following config
+        //      * @see {@link ./src/configs/event.config.ts}
+        //      */
+        //     target.prototype.InitEventListener = function () {
+        //         for (const { eventName, handler } of listeners) {
+        //             this.on(eventName, this[handler].bind(this));
+        //         }
+        //     };
+        // }
 
         // make all injected items in service was register
         const metadataKeys = Reflect.getMetadataKeys(target);
@@ -125,7 +124,11 @@ export function Service(type?: "Event"): any {
 
 /**
  * A decorator for custom repository class
- * @param entity class entity for this repository
+ * @param entity class entity for this repository by
+ * add decorator `@CustomRepository(Entity)` above of the following code
+ * ```
+ * export class CustomRepository extends Repository<User> {}
+ * ```
  */
 export function CustomRepository(entity: any): ClassDecorator {
     return function (target: any) {
@@ -137,7 +140,7 @@ export function CustomRepository(entity: any): ClassDecorator {
  * A decorator for inject custom repository
  * @param repo a custom repository that decorated by `@CustomRepository(Entity)`
  */
-export function InjectRepository(repo: Function): ParameterDecorator {
+export function InjectCustomRepo(repo: Function): ParameterDecorator {
     return function (
         target: Object,
         propertyKey: string | symbol | undefined,

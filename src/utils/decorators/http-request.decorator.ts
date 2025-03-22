@@ -2,14 +2,11 @@ import { Request, Response } from "express";
 import { plainToInstance } from "class-transformer";
 import { validateOrReject } from "class-validator";
 import { Decorate } from "../../configs/constants.config";
-import {
-    BAD_REQUEST,
-    CREATED,
-    OK,
-    StatusMessage,
-} from "../http-code.config";
+import { BAD_REQUEST, CREATED, OK, StatusMessage } from "../http-code.config";
 
 type HTTPVerb = "get" | "post" | "patch" | "delete";
+
+export type AuthType = "JWT" | "Basic";
 
 export type ControllerRoute = {
     method: HTTPVerb;
@@ -39,7 +36,7 @@ export function HTTPRequest(verb: HTTPVerb, path: string, code?: number) {
         );
 
         // Original method, descriptor.value
-        const method = descriptor.value;
+        const originalMethod = descriptor.value;
 
         // Apply transformations for request data transfer to object
         descriptor.value = async function (
@@ -56,13 +53,13 @@ export function HTTPRequest(verb: HTTPVerb, path: string, code?: number) {
                 );
 
                 try {
-                    let result = await method.apply(this, [data, res]);
+                    let result = await originalMethod.apply(this, [data, res]);
 
                     // Transform http response from CLASS_TRANSFORM_RESPONSE
                     if (classTransformRes) {
                         result = plainToInstance(
                             classTransformRes,
-                            result || {},
+                            typeof result !== "object" ? { result } : result,
                             {
                                 excludeExtraneousValues: true,
                             },
@@ -86,7 +83,7 @@ export function HTTPRequest(verb: HTTPVerb, path: string, code?: number) {
                 }
             } else {
                 // When manual response data
-                method.apply(this, [data, res]);
+                originalMethod.apply(this, [data, res]);
             }
         };
 
@@ -155,6 +152,7 @@ export function ValidateRequest(classDTO: any) {
 
         descriptor.value = async function (req: Request, res: Response) {
             try {
+                const authUser = Reflect.get(req, "user");
                 // Transform plain object to class instance
                 const dto: any = plainToInstance(
                     classDTO,
@@ -162,6 +160,7 @@ export function ValidateRequest(classDTO: any) {
                         ...(req?.params || {}),
                         ...(req?.query || {}),
                         ...(req?.body || {}),
+                        user: authUser,
                     },
                     { excludeExtraneousValues: true },
                 );
@@ -203,10 +202,22 @@ export function ValidateRequest(classDTO: any) {
  */
 export function TransformResponse(classTransformResponse: any) {
     return function (target: any, propertyKey: string) {
-        // set metadata CLASS_TRANSFORM_RESPONSE to transformed response data
+        // set metadata CLASS_TRANSFORMER to transformed response data
         Reflect.defineMetadata(
             Decorate.CLASS_TRANSFORMER,
             classTransformResponse,
+            target,
+            propertyKey,
+        );
+    };
+}
+
+export function AuthGuard(type: AuthType) {
+    return function (target: any, propertyKey: string) {
+        // set metadata JWT_AUTHENTICATION to guard specific endpoint
+        Reflect.defineMetadata(
+            Decorate.JWT_AUTHENTICATION,
+            type,
             target,
             propertyKey,
         );

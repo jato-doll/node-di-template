@@ -11,11 +11,15 @@ import {
     DEFAULT_PATH,
     Inject,
 } from "./configs/constants.config";
-import { ControllerRoute } from "./utils/decorators/http-request.decorator";
-import { Logger } from "./utils/logger.util";
+import AuthenticateToken from "./configs/middlewares/auth.middleware";
 import ErrorHandler from "./configs/middlewares/error.middleware";
 import RequestLogger from "./configs/middlewares/req.middleware";
 import ResponseLogger from "./configs/middlewares/res.middleware";
+import {
+    AuthType,
+    ControllerRoute,
+} from "./utils/decorators/http-request.decorator";
+import { Logger } from "./utils/logger.util";
 
 @singleton()
 export class AppServer {
@@ -42,7 +46,7 @@ export class AppServer {
         try {
             // define controllers
             this.controllers = controllers;
-            
+
             // initialize database connection
             await this.dataSource.initialize();
             // run database migrations
@@ -130,24 +134,45 @@ export class AppServer {
 
                 if (route) {
                     // custom controller path
-                    const path = controllerPaht
+                    let path = controllerPaht
                         ? `/${controllerPaht}/${route.path}`.replace(
                               /(\/\/)/g,
                               "/",
                           )
                         : `/${route.path}`;
 
+                    // add DEFAULT_PATH of the API service if set
+                    if (DEFAULT_PATH) {
+                        path = DEFAULT_PATH + path;
+                    }
+
                     Logger.Success(
                         `Register HTTP [${route.method.toUpperCase()}]${path}`,
                     );
 
-                    // add router and method each path
-                    this.app[route.method](
-                        path.toLowerCase(),
-                        (req, res, next) => {
-                            instance[route.name](req, res, next);
-                        },
+                    const jwtAuth: AuthType = Reflect.getMetadata(
+                        Decorate.JWT_AUTHENTICATION,
+                        prototype,
+                        methodName,
                     );
+
+                    // add JWT auth each path if specific
+                    if (jwtAuth === "JWT") {
+                        this.app[route.method](
+                            path.toLowerCase(),
+                            AuthenticateToken,
+                            (req, res, next) => {
+                                instance[route.name](req, res, next);
+                            },
+                        );
+                    } else {
+                        this.app[route.method](
+                            path.toLowerCase(),
+                            (req, res, next) => {
+                                instance[route.name](req, res, next);
+                            },
+                        );
+                    }
                 }
             });
         });
