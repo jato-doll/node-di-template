@@ -8,6 +8,7 @@ This is a lightweight boilerplate for building Node.js applications using TypeSc
 -   **Dependency Injection**: Modular and testable code using dependency injection (manual or with a library like tsyringe).
 -   **Jest Testing**: Pre-configured with support for `.test.ts` and `.spec.ts` files.
 -   **Scalable Structure**: Organized for growth with services, controllers, and tests.
+-   **TypeORM**: Connect MySQL database with TypeORM and ready to use decorators such as `CustomRepository` or `InjectCustomRepo` includes database migrations.
 
 ## Project Structure
 
@@ -15,9 +16,11 @@ This is a lightweight boilerplate for building Node.js applications using TypeSc
 node-di-template/
 ├── src/
 │   ├── __tests__/          # Test files (*.test.ts or *.spec.ts)
-│   ├── configs/            # Application configs and constants
+│   ├── configs/            # Application configs and constants (first time setup)
 │   ├── controllers/        # Request handlers and business logic entry points
-│   ├── utils/              # Utility files
+|   |── entities            # database entities
+|   |── migrations          # database migrations
+│   ├── utils/              # Utility files (use multiple times whole app)
 │   ├── app.ts              # Application entry point
 │   └── server.ts           # Express server handlers
 ├── jest.config.ts          # Jest configuration
@@ -81,7 +84,29 @@ describe("App Controller", () => {
         });
     });
 });
+
 ```
+## TypeORM Decorators
+Use these helpful decorators to connect database with TypeORM connection such as `CustomRepository`, `InjectCustomRepo`, and `InjectRepository`
+
+**Example**
+
+```ts
+@CustomRepository(Entity)
+export class CustomRepository extends Repository<Entity> {}
+
+@Service()
+export class SomeService {
+    constructor(
+        @InjectCustomRepo(CustomRepository)
+        private readonly customRepo: CustomRepository,
+        // or
+        @InjectRepository(Entity)
+        private readonly entityRepo: Repository<Entity>
+    ) {}
+}
+```
+
 
 ## Keywords
 
