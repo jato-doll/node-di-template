@@ -28,7 +28,7 @@ export const AppEnv = {
  * ********************************
  */
 
-export const DEFAULT_PATH = "/API/V1";
+export const DEFAULT_PATH = "/api/v1";
 
 export const AppDataSource = new DataSource({
     type: "mysql",
@@ -65,13 +65,15 @@ export const Inject = {
 export const Decorate = {
     HTTP_ROUTE_PATH: Symbol.for("HTTP_ROUTE_PATH"),
     Controller: {
+        ENTITIES: Symbol.for("CONTROLLER_ENTITIES"),
+        LIBRARIES: Symbol.for("CONTROLLER_LIBRARIES"),
         PATH: Symbol.for("CONTROLLER_PATH"),
         REPOSITORIES: Symbol.for("CONTROLLER_REPOSITORIES"),
-        ENTITIES: Symbol.for("CONTROLLER_ENTITIES"),
     },
     Service: {
-        REPOSITORIES: Symbol.for("SERVICE_REPOSITORIES"),
         ENTITIES: Symbol.for("SERVICE_ENTITIES"),
+        LIBRARIES: Symbol.for("SERVICE_LIBRARIES"),
+        REPOSITORIES: Symbol.for("SERVICE_REPOSITORIES"),
     },
     CLASS_TRANSFORMER: Symbol.for("CLASS_TRANSFORMER"),
     JWT_AUTHENTICATION: Symbol.for("JWT_AUTHENTICATION"),

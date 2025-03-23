@@ -9,16 +9,16 @@ export class AppController {
 
     @Get()
     getHealthCheck() {
-        return this.appService.getHealthCheck();
-    }
-
-    @Get("Check")
-    healthCheck() {
         return { message: "OK" };
     }
 
     @Get("Favicon.ico")
     favicon() {
         return null;
+    }
+
+    @Get("Healthz")
+    healthCheck() {
+        return this.appService.getHealthCheck();
     }
 }

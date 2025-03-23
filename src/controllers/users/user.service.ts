@@ -5,7 +5,7 @@ import {
     Service,
 } from "../../utils/decorators/app-registry.decorator";
 import { UpdateUserData } from "./user.validate";
-import { HttpError } from "../../utils/http-error.config";
+import { HttpError } from "../../utils/http-error.util";
 
 @Service()
 export class UserService {

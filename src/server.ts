@@ -54,6 +54,7 @@ export class AppServer {
 
             return this.pluginMiddlewares();
         } catch (error) {
+            console.log(error)
             Logger.Error(String(error));
             process.exit(1);
         }
@@ -90,6 +91,11 @@ export class AppServer {
                 controller,
             );
 
+            const libraries: any[] = Reflect.getMetadata(
+                Decorate.Controller.LIBRARIES,
+                controller,
+            );
+
             // register all entity repositories
             if (repositories?.length) {
                 repositories.forEach(({ repo, entity }) => {
@@ -121,6 +127,18 @@ export class AppServer {
                 });
             }
 
+            // register all library services
+            if (libraries?.length) {
+                libraries.forEach((library) => {
+                    // register Library if not registered
+                    if (!container.isRegistered(library.name)) {
+                        container.register(library.name, {
+                            useClass: library,
+                        });
+                    }
+                });
+            }
+
             // Register routes
             const instance: any = container.resolve(controller);
             const prototype = Object.getPrototypeOf(instance);
@@ -142,13 +160,14 @@ export class AppServer {
                         : `/${route.path}`;
 
                     // add DEFAULT_PATH of the API service if set
-                    if (DEFAULT_PATH) {
+                    // *** except /Favicon.ico
+                    if (path !== "/Favicon.ico" && DEFAULT_PATH) {
                         path = DEFAULT_PATH + path;
-                    }
 
-                    Logger.Success(
-                        `Register HTTP [${route.method.toUpperCase()}]${path}`,
-                    );
+                        Logger.Success(
+                            `Register HTTP [${route.method.toUpperCase()}] ${path}`,
+                        );
+                    }
 
                     const jwtAuth: AuthType = Reflect.getMetadata(
                         Decorate.JWT_AUTHENTICATION,

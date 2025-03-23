@@ -5,7 +5,7 @@ import {
     StatusMessage,
     UNAUTHORIZED,
     UNPROCESSABLE_ENTITY,
-} from "./http-code.config";
+} from "./http-code.util";
 
 /**
  * HttpError class for throwing each type or error

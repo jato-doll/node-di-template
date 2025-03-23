@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { plainToInstance } from "class-transformer";
 import { validateOrReject } from "class-validator";
 import { Decorate } from "../../configs/constants.config";
-import { BAD_REQUEST, CREATED, OK, StatusMessage } from "../http-code.config";
+import { BAD_REQUEST, CREATED, OK, StatusMessage } from "../http-code.util";
 
 type HTTPVerb = "get" | "post" | "patch" | "delete";
 

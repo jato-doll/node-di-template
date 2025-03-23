@@ -23,10 +23,11 @@ export function Controller(path?: string): ClassDecorator {
         metadataKeys.forEach((key: string) => {
             if (key === CLASS_CONSTRUCTURE_KEY) {
                 const services = Reflect.getMetadata(key, target);
-                
+
                 if (services?.length > 0) {
                     const controllerRepositories: any = [];
                     const controllerEntities: any = [];
+                    const controllerLibraries: any = [];
 
                     services.forEach((service: any) => {
                         // get injected repositories each service
@@ -50,6 +51,17 @@ export function Controller(path?: string): ClassDecorator {
                         if (entities?.length) {
                             controllerEntities.push(...entities);
                         }
+
+                        // get library services from service if exists
+                        const libraries = Reflect.getMetadata(
+                            Decorate.Service.LIBRARIES,
+                            service,
+                        );
+
+                        // set libraries from service if exists
+                        if (libraries?.length) {
+                            controllerLibraries.push(...libraries);
+                        }
                     });
 
                     // set controller repositories to metadata key
@@ -63,6 +75,13 @@ export function Controller(path?: string): ClassDecorator {
                     Reflect.defineMetadata(
                         Decorate.Controller.ENTITIES,
                         controllerEntities,
+                        target,
+                    );
+
+                    // set controller libraries to metadata key
+                    Reflect.defineMetadata(
+                        Decorate.Controller.LIBRARIES,
+                        controllerLibraries,
                         target,
                     );
                 }
@@ -189,5 +208,27 @@ export function InjectEntityRepo(entity: any): ParameterDecorator {
         Reflect.defineMetadata(Decorate.Service.ENTITIES, entities, target);
 
         inject(entity.name)(target, propertyKey, parameterIndex);
+    };
+}
+
+/**
+ * A decorator for inject library service
+ * @param libService custom library service
+ */
+export function InjectLibService(service: any) {
+    return function (
+        target: Object,
+        propertyKey: string | symbol | undefined,
+        parameterIndex: number,
+    ) {
+        let libServices = Reflect.getMetadata(
+            Decorate.Service.LIBRARIES,
+            target,
+        );
+
+        libServices = libServices ? [...libServices, service] : [service];
+        Reflect.defineMetadata(Decorate.Service.LIBRARIES, libServices, target);
+
+        inject(service.name)(target, propertyKey, parameterIndex);
     };
 }
