@@ -7,9 +7,8 @@ const ResponseLogger = (
     res: Response,
     next: NextFunction,
 ): void => {
-    const startHrTime = process.hrtime();
-
     res.on("finish", () => {
+        const startHrTime = Reflect.get(res, "startHrTime");
         const statusCode = Reflect.get(res, "statusCode");
         const error = Reflect.get(res, "error");
 

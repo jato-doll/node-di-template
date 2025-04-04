@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { plainToInstance } from "class-transformer";
 import { validateOrReject } from "class-validator";
 import { Decorate } from "../../configs/constants.config";
@@ -42,6 +42,7 @@ export function HTTPRequest(verb: HTTPVerb, path: string, code?: number) {
         descriptor.value = async function (
             data: any, // "data" can be both req or dto when apply @ValidateRequest(ClassDTO)
             res: Response,
+            next: NextFunction,
         ) {
             // When using return data
             if (code) {
@@ -53,7 +54,11 @@ export function HTTPRequest(verb: HTTPVerb, path: string, code?: number) {
                 );
 
                 try {
-                    let result = await originalMethod.apply(this, [data, res]);
+                    let result = await originalMethod.apply(this, [
+                        data,
+                        res,
+                        next,
+                    ]);
 
                     // Transform http response from CLASS_TRANSFORM_RESPONSE
                     if (classTransformRes) {
@@ -82,8 +87,13 @@ export function HTTPRequest(verb: HTTPVerb, path: string, code?: number) {
                     });
                 }
             } else {
-                // When manual response data
-                originalMethod.apply(this, [data, res]);
+                try {
+                    // When manual response data
+                    originalMethod.apply(this, [data, res]);
+                } catch (error) {
+                    Reflect.set(res, "error", StatusMessage.INTERNAL_SERVER);
+                    next(error);
+                }
             }
         };
 
@@ -150,7 +160,11 @@ export function ValidateRequest(classDTO: any) {
         // Modify the descriptor.value which is the actual method
         const originalMethod = descriptor.value;
 
-        descriptor.value = async function (req: Request, res: Response) {
+        descriptor.value = async function (
+            req: Request,
+            res: Response,
+            next: NextFunction,
+        ) {
             try {
                 const authUser = Reflect.get(req, "user");
                 // Transform plain object to class instance
@@ -169,7 +183,7 @@ export function ValidateRequest(classDTO: any) {
                 await validateOrReject(dto);
 
                 // Replace request with dto
-                originalMethod.apply(this, [dto, res]);
+                originalMethod.apply(this, [dto, res, next]);
             } catch (errors: any) {
                 let message: string = StatusMessage.BAD_REQUEST;
 
